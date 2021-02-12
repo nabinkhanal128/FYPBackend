@@ -40,7 +40,7 @@ class MyUserManager(BaseUserManager):
         return user
 
 
-class User(AbstractBaseUser):
+class CustomUser(AbstractBaseUser):
     email = models.EmailField(
         verbose_name='email address',
         max_length=255,
@@ -91,17 +91,33 @@ class User(AbstractBaseUser):
         return self.is_admin
 
 class Doctor(models.Model):
-    id=models.AutoField(primary_key=True)
-    admin=models.OneToOneField(User,on_delete=models.CASCADE)
-    created_at=models.DateTimeField(auto_now_add=True)
-    updated_at=models.DateTimeField(auto_now_add=True)
-    email = models.EmailField(_(""), max_length=254)
-    objects=models.Manager()
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        primary_key=True,
+    )
+    approved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now_add=True)
+    address = models.TextField()
+    profile_pic = models.ImageField()
+    phone_number = models.IntegerField(max_length=14)
+
+    def __str__(self):
+        return f'{self.email}'
 
 class Patient(models.Model):
-    id=models.AutoField(primary_key=True)
-    admin=models.OneToOneField(User,on_delete=models.CASCADE)
-    address=models.TextField()
-    created_at=models.DateTimeField(auto_now_add=True)
-    updated_at=models.DateTimeField(auto_now_add=True)
-    objects=models.Manager()
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        primary_key=True,
+    )
+    address = models.TextField()
+    profile_pic = models.ImageField()
+    phone_number = models.IntegerField(max_length=14)
+    dob = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.email}'
