@@ -16,7 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
-from users.views import EmailTokenObtainPairView, VerifyEmail
+from users.views import EmailTokenObtainPairView, VerifyEmail, PasswordTokenCheckAPIView, RequestPasswordResetEmail, SetNewPasswordAPIView
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -44,6 +44,9 @@ urlpatterns = [
     path('api/token/', EmailTokenObtainPairView.as_view()),
     path('api/token/refresh/', TokenRefreshView.as_view()),
     path('email-verify', VerifyEmail.as_view(), name='email-verify'),
+    path('password-reset/<uidb64>/<token>/', PasswordTokenCheckAPIView.as_view(), name='password-reset-confirm'),
+    path('request-reset-email',RequestPasswordResetEmail.as_view(), name='request-reset-email'),
+    path('password-reset-complete',SetNewPasswordAPIView.as_view(), name='password-reset-complete'),
     path('', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
