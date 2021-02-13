@@ -1,13 +1,15 @@
-from rest_framework import serializers
+import response as response
+from rest_framework import serializers, status
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenObtainSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.response import Response
 
 from .models import CustomUser, Patient, Doctor
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ('first_name', 'last_name', 'email', 'password')
+        fields = ('id', 'first_name', 'last_name', 'email', 'password')
         extra_kwargs = {'password': {'write_only': True},
                         'id': {'read_only': True},
                         'email': {'required': True}, }
@@ -48,9 +50,11 @@ class CustomTokenObtainPairSerializer(EmailTokenObtainSerializer):
         data = super().validate(attrs)
 
         refresh = self.get_token(self.user)
-
-        data["refresh"] = str(refresh)
-        data["access"] = str(refresh.access_token)
+        if self.user.is_verified == True:
+            data["refresh"] = str(refresh)
+            data["access"] = str(refresh.access_token)
+        else:
+            raise serializers.ValidationError("Email should be validated!!")
 
         return data
 
