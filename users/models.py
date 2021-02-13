@@ -4,7 +4,6 @@ from django.contrib.auth.models import (
 )
 
 
-
 class MyUserManager(BaseUserManager):
     def create_user(self, email, password=None):
         """
@@ -56,6 +55,7 @@ class CustomUser(AbstractBaseUser):
         max_length=255,
         verbose_name="Last Name",
     )
+    is_verified = models.BooleanField(default=False)
     is_patient = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
@@ -90,6 +90,7 @@ class CustomUser(AbstractBaseUser):
         # Simplest possible answer: All admins are staff
         return self.is_admin
 
+
 class Doctor(models.Model):
     user = models.OneToOneField(
         CustomUser,
@@ -104,7 +105,7 @@ class Doctor(models.Model):
     phone_number = models.IntegerField(max_length=14)
 
     def __str__(self):
-        return f'{self.email}'
+        return f'{self.user}'
 
 class Patient(models.Model):
     user = models.OneToOneField(
@@ -120,4 +121,4 @@ class Patient(models.Model):
     updated_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.email}'
+        return f'{self.user}'

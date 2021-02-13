@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'allauth',
     'rest_framework',
     'rest_framework.authtoken',
+    'django_rest_passwordreset',
+    'drf_yasg',
 ]
 
 MIDDLEWARE = [
@@ -122,6 +124,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 AUTH_USER_MODEL = 'users.CustomUser'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -134,4 +137,13 @@ REST_FRAMEWORK = {
     
 }
 SITE_ID = 1
+DEFAULT_DOMAIN = 'https://localhost:8000'
+
 STATIC_URL = '/static/'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'backendtesting0@gmail.com'
+EMAIL_HOST_PASSWORD = 'nabin123'

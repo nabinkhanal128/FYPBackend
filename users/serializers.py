@@ -1,4 +1,3 @@
-from django.contrib.auth import get_user_model, authenticate
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenObtainSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -55,3 +54,9 @@ class CustomTokenObtainPairSerializer(EmailTokenObtainSerializer):
 
         return data
 
+class EmailVerificationSerializer(serializers.ModelSerializer):
+    token = serializers.CharField(max_length=555)
+
+    class Meta:
+        model = CustomUser
+        fields = ['token']
