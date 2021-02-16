@@ -2,7 +2,6 @@ from django.urls import path, include
 from rest_framework import routers, urls
 
 from . import views as UserView
-from .views import PatientViewset, DoctorViewset
 
 router = routers.DefaultRouter()
 router.register('user-create', UserView.UserViewSet, basename='create user')
