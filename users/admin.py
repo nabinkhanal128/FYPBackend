@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser, Doctor, Patient
+from .models import CustomUser, Doctor
 from django import forms
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.core.exceptions import ValidationError
@@ -79,5 +79,4 @@ class UserAdmin(BaseUserAdmin):
     filter_horizontal = ()
 # Register your models here.
 admin.site.register(CustomUser, UserAdmin)
-admin.site.register(Patient)
 admin.site.register(Doctor)

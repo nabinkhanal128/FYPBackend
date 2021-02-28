@@ -4,13 +4,16 @@ from django.http import HttpResponsePermanentRedirect
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from rest_framework import viewsets, status, views, generics
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
-from users.models import Doctor, Patient, CustomUser
-from users.serializers import PatientSerializer, DoctorSerializer, UserSerializer, CustomTokenObtainPairSerializer, \
-    EmailVerificationSerializer, ChangePasswordSerializer
+from users.models import Doctor, CustomUser
+from users.serializers import DoctorSerializer, UserSerializer, CustomTokenObtainPairSerializer, \
+    EmailVerificationSerializer, ChangePasswordSerializer, showProfileSerializer
+from .permissions import OwnProfilePermission
 from .utils import Util
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
@@ -46,6 +49,13 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(user_data, status= status.HTTP_201_CREATED)
 
 
+
+class ProfileAPI(APIView):
+    def get(self, request, *args, **kwargs):
+        user = get_object_or_404(CustomUser, pk=kwargs['user_id'])
+        profile_serializer = UserSerializer()
+        return Response(profile_serializer.data)
+
 class VerifyEmail(views.APIView):
     serializer_class = EmailVerificationSerializer
     token_param_config = openapi.Parameter('token', in_=openapi.IN_QUERY, description='Description', type=openapi.TYPE_STRING)
@@ -68,51 +78,26 @@ class VerifyEmail(views.APIView):
 
 
 
-
-class PatientViewset(viewsets.ModelViewSet):
-    queryset = Patient.objects.all()
-    serializer_class = PatientSerializer
-
-
-
 class DoctorViewset(viewsets.ModelViewSet):
+    queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, ]
+    permission_classes = [IsAdminUser, OwnProfilePermission, ]
+
+
 
 
 class EmailTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 class ChangePasswordView(generics.UpdateAPIView):
-    """
-    An endpoint for changing password.
-    """
+
+    queryset = CustomUser.objects.all()
+    permission_classes = (IsAuthenticated,)
     serializer_class = ChangePasswordSerializer
-    model = CustomUser
+
+class ShowProfile(APIView):
     permission_classes = (IsAuthenticated,)
 
-    def get_object(self, queryset=None):
-        obj = self.request.user
-        return obj
-
-    def update(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        serializer = self.get_serializer(data=request.data)
-
-        if serializer.is_valid():
-            # Check old password
-            if not self.object.check_password(serializer.data.get("old_password")):
-                return Response({"old_password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
-            # set_password also hashes the password that the user will get
-            self.object.set_password(serializer.data.get("new_password"))
-            self.object.save()
-            response = {
-                'status': 'success',
-                'code': status.HTTP_200_OK,
-                'message': 'Password updated successfully',
-                'data': []
-            }
-
-            return Response(response)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get(self, request):
+        serializer = showProfileSerializer(request.user)
+        return Response(serializer.data)

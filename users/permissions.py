@@ -3,11 +3,18 @@ from rest_framework import permissions
 from users import models
 
 
-class IsOwner(permissions.BasePermission):
-    '''
-Custom permission to only give the owner of the object access
-'''
-    message = 'You must be the owner of this object'
+class OwnProfilePermission(permissions.BasePermission):
+    """
+    Object-level permission to only allow updating his own profile
+    """
+    def has_object_permission(self, request, view, obj):
+        # Read permissions are allowed to any request,
+        # so we'll always allow GET, HEAD or OPTIONS requests.
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        # obj here is a UserProfile instance
+        return obj.user == request.user
 
 def has_permission(self, request, view):
     if view.action == 'list' and not request.user.is_staff:

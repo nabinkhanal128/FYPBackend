@@ -75,8 +75,22 @@ class CustomUser(AbstractBaseUser):
         max_length=255,
         verbose_name="Last Name",
     )
+    address = models.TextField(
+        max_length=255,
+        verbose_name="Address",)
+    profile_pic = models.ImageField(
+        verbose_name="Profile Picture",
+    )
+    phone_number = models.IntegerField(
+        null=True,
+        verbose_name="Phone Number",
+    )
+    dob = models.DateField(
+        verbose_name="Date of Birth",
+    )
     is_verified = models.BooleanField(default=False)
     is_patient = models.BooleanField(default=True)
+    is_doctor = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
 
@@ -128,19 +142,3 @@ class Doctor(models.Model):
     def __str__(self):
         return f'{self.user}'
 
-class Patient(models.Model):
-    user = models.OneToOneField(
-        CustomUser,
-        on_delete=models.CASCADE,
-        primary_key=True,
-        related_name='patient'
-    )
-    address = models.TextField()
-    profile_pic = models.ImageField()
-    phone_number = models.IntegerField(max_length=14)
-    dob = models.DateField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f'{self.user}'
