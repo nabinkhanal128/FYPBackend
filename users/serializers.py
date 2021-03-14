@@ -1,17 +1,17 @@
 from django.contrib.auth.password_validation import validate_password
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from rest_framework import serializers, status
+from rest_framework import serializers, status, validators
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import CustomUser, Doctor
+from .models import CustomUser, Doctor, Patient
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import smart_str, force_str, smart_bytes, DjangoUnicodeDecodeError
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ('id', 'first_name', 'last_name', 'email', 'address', 'profile_pic', 'phone_number', 'dob', 'password')
+        fields = ('id', 'first_name', 'last_name', 'email', 'user_type', 'password')
         extra_kwargs = {'password': {'write_only': True},
                         'id': {'read_only': True},
                         'email': {'required': True}, }
@@ -24,10 +24,6 @@ class UserSerializer(serializers.ModelSerializer):
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
             email=validated_data['email'],
-            address=validated_data['address'],
-            profile_pic=validated_data['profile_pic'],
-            dob=validated_data['dob'],
-            phone_number=validated_data['phone_number'],
         )
 
         user.set_password(validated_data['password'])
@@ -35,11 +31,10 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-
-class showProfileSerializer(serializers.ModelSerializer):
-   class Meta:
-      model = CustomUser
-      fields = "__all__"
+class PatientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Patient
+        fields = '__all__'
 
 class DoctorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -59,6 +54,8 @@ class CustomTokenObtainPairSerializer(EmailTokenObtainSerializer):
 
         refresh = self.get_token(self.user)
         if self.user.is_verified == True:
+            data['user_type'] = str(self.user.user_type)
+            data["user_id"] = int(self.user.pk)
             data["refresh"] = str(refresh)
             data["access"] = str(refresh.access_token)
         else:

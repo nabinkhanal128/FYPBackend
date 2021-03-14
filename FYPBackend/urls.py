@@ -16,7 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
-from users.views import EmailTokenObtainPairView, VerifyEmail, ChangePasswordView, ShowProfile, ProfileAPI
+from users.views import EmailTokenObtainPairView, VerifyEmail, ChangePasswordView
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -40,9 +40,9 @@ schema_view = get_schema_view(
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('users/', include('users.urls')),
-    path('viewprofile/', ShowProfile.as_view(), name='auth_view_profile'),
+    path('appointment/', include('appointment.urls')),
+    path('booking/', include('booking.urls')),
     path('users/change_password/<int:pk>/', ChangePasswordView.as_view(), name='auth_change_password'),
-    path('api/users/<user_id>/profile/', ProfileAPI.as_view()),
     path('api-auth/', include('rest_framework.urls')),
     path('api/token/', EmailTokenObtainPairView.as_view()),
     path('api/token/refresh/', TokenRefreshView.as_view()),

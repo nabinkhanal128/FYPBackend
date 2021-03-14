@@ -10,10 +10,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
-from users.models import Doctor, CustomUser
+from users.models import Doctor, CustomUser, Patient
 from users.serializers import DoctorSerializer, UserSerializer, CustomTokenObtainPairSerializer, \
-    EmailVerificationSerializer, ChangePasswordSerializer, showProfileSerializer
-from .permissions import OwnProfilePermission
+    EmailVerificationSerializer, ChangePasswordSerializer, PatientSerializer
+from .permissions import IsOwnerOrReadOnly
 from .utils import Util
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
@@ -31,7 +31,6 @@ class CustomRedirect(HttpResponsePermanentRedirect):
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     queryset = CustomUser.objects.all()
-    permission_classes = [AllowAny, ]
     def create(self, request):
         serializer=UserSerializer(data=request.data,context={"request": request})
         serializer.is_valid()
@@ -50,11 +49,30 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 
-class ProfileAPI(APIView):
-    def get(self, request, *args, **kwargs):
-        user = get_object_or_404(CustomUser, pk=kwargs['user_id'])
-        profile_serializer = UserSerializer()
-        return Response(profile_serializer.data)
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return UserSerializer
+        if self.action == 'list':
+            return UserSerializer
+        if self.action == 'retrieve':
+            return UserSerializer
+        if self.action == 'update':
+            return UserSerializer
+        return UserSerializer
+
+    def get_permissions(self):
+        # Your logic should be all here
+        if self.action == 'list':
+            permission_classes = [IsAuthenticatedOrReadOnly]
+        if self.action == 'create':
+            permission_classes = [AllowAny]
+        if self.action == 'update':
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [AllowAny]
+        return [permission() for permission in permission_classes]
+
+
 
 class VerifyEmail(views.APIView):
     serializer_class = EmailVerificationSerializer
@@ -76,14 +94,44 @@ class VerifyEmail(views.APIView):
         except jwt.exceptions.DecodeError as identifier:
             return Response({'error': 'Invalid token request new one'}, status=status.HTTP_400_BAD_REQUEST)
 
+class PatientViewset(viewsets.ModelViewSet):
+    queryset = Patient.objects.all()
+    serializer_class = PatientSerializer
+    permission_classes = [IsOwnerOrReadOnly, IsAuthenticatedOrReadOnly,]
+
+    def get_permissions(self):
+        # Your logic should be all here
+        if self.request.method == 'GET':
+            self.permission_classes = (AllowAny,)
+        if self.request.method == 'PATCH':
+            self.permission_classes = (IsAuthenticated, IsOwnerOrReadOnly)
+        if self.request.method == 'PUT':
+            self.permission_classes = (IsOwnerOrReadOnly,)
+        if self.request.method == 'DELETE':
+            self.permission_classes = (IsAdminUser,)
+        if self.request.method == 'POST':
+            self.permission_classes = (IsAuthenticated, IsOwnerOrReadOnly,)
+        return super(PatientViewset, self).get_permissions()
 
 
 class DoctorViewset(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
-    permission_classes = [IsAdminUser, OwnProfilePermission, ]
+    permission_classes = [IsOwnerOrReadOnly, IsAuthenticatedOrReadOnly, ]
 
-
+    def get_permissions(self):
+        # Your logic should be all here
+        if self.request.method == 'GET':
+            self.permission_classes = (AllowAny,)
+        if self.request.method == 'PATCH':
+            self.permission_classes = (IsAuthenticated, IsOwnerOrReadOnly)
+        if self.request.method == 'PUT':
+            self.permission_classes = (IsOwnerOrReadOnly,)
+        if self.request.method == 'DELETE':
+            self.permission_classes = (IsAdminUser,)
+        if self.request.method == 'POST':
+            self.permission_classes = (IsAuthenticated, IsOwnerOrReadOnly,)
+        return super(DoctorViewset, self).get_permissions()
 
 
 class EmailTokenObtainPairView(TokenObtainPairView):
@@ -94,10 +142,3 @@ class ChangePasswordView(generics.UpdateAPIView):
     queryset = CustomUser.objects.all()
     permission_classes = (IsAuthenticated,)
     serializer_class = ChangePasswordSerializer
-
-class ShowProfile(APIView):
-    permission_classes = (IsAuthenticated,)
-
-    def get(self, request):
-        serializer = showProfileSerializer(request.user)
-        return Response(serializer.data)
