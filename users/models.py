@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import (
     BaseUserManager, AbstractBaseUser
 )
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.urls import reverse
 from django_rest_passwordreset.signals import reset_password_token_created
@@ -75,19 +76,21 @@ class CustomUser(AbstractBaseUser):
         max_length=255,
         verbose_name="Last Name",
     )
-    address = models.TextField(
-        max_length=255,
-        verbose_name="Address",)
-    profile_pic = models.ImageField(
-        verbose_name="Profile Picture",
-    )
     phone_number = models.IntegerField(
         null=True,
         verbose_name="Phone Number",
     )
     dob = models.DateField(
         verbose_name="Date of Birth",
+        null=True
     )
+    address = models.TextField(
+        max_length=255,
+        verbose_name="Address", )
+    gender_type_data = (('M', "Male"), ('F', "Female"), ('U', "Unspecified"))
+    gender_type = models.CharField(default='F', choices=gender_type_data, max_length=10)
+    user_type_data = (('A', 'Admin'), ('P', "Patient"), ('D', "Doctor"))
+    user_type = models.CharField(default='P', choices=user_type_data, max_length=10)
     is_verified = models.BooleanField(default=False)
     is_patient = models.BooleanField(default=True)
     is_doctor = models.BooleanField(default=False)
@@ -124,6 +127,23 @@ class CustomUser(AbstractBaseUser):
         # Simplest possible answer: All admins are staff
         return self.is_admin
 
+class Patient(models.Model):
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='patient'
+    )
+    blood_group = (('Choose', 'Choose your blood group'),('A+', "A+"), ('O+', "B+"), ('AB+', "AB+"), ('A-', "A-"),
+                   ('O-', "O-"), ('B-', "B-"), ('AB-', "AB-"))
+    blood_type = models.CharField(default='Choose', choices=blood_group, max_length=10)
+    profile_pic = models.ImageField(upload_to='patientprofile/',
+        verbose_name="Profile Picture",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f'{self.user}'
 
 class Doctor(models.Model):
     user = models.OneToOneField(
@@ -132,13 +152,35 @@ class Doctor(models.Model):
         primary_key=True,
         related_name='doctor'
     )
+    profile_pic = models.ImageField(upload_to='doctorprofile/',
+        verbose_name="Doctor Profile Picture",
+    )
     approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    address = models.TextField()
-    profile_pic = models.ImageField()
-    phone_number = models.IntegerField(max_length=14)
-
+    specialization = models.CharField(max_length=25)
+    about= models.CharField(max_length=1000)
     def __str__(self):
         return f'{self.user}'
 
+
+
+@receiver(post_save, sender=CustomUser)
+# Now Creating a Function which will automatically insert data in HOD, Staff or Student
+def create_user_profile(sender, instance, created, **kwargs):
+    # if Created is true (Means Data Inserted)
+    if created:
+        # Check the user_type and insert the data in respective tables
+        if instance.user_type == 'P':
+            Patient.objects.create(user=instance, profile_pic="patientprofile/userdefault.png", blood_type="Choose")
+        if instance.user_type == 'D':
+            Doctor.objects.create(user=instance, profile_pic="doctorprofile/defaultdoctor.png", approved=False,
+                                  specialization="", about="")
+
+
+@receiver(post_save, sender=CustomUser)
+def save_user_profile(sender, instance, **kwargs):
+    if instance.user_type == 'P':
+        instance.patient.save()
+    if instance.user_type == 'D':
+        instance.doctor.save()
