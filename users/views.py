@@ -7,13 +7,14 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
+from rest_framework.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from users.models import Doctor, CustomUser, Patient
 from users.serializers import DoctorSerializer, UserSerializer, CustomTokenObtainPairSerializer, \
-    EmailVerificationSerializer, ChangePasswordSerializer, PatientSerializer
-from .permissions import IsOwnerOrReadOnly
+    EmailVerificationSerializer, ChangePasswordSerializer, PatientSerializer, UserUpdateSerializer
+from .permissions import IsOwnerOrReadOnly, PatientOrReadOnly, DoctorOrReadOnly, ProfileOwnerOrReadOnly
 from .utils import Util
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
@@ -23,6 +24,8 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.utils.encoding import smart_str, force_str, smart_bytes, DjangoUnicodeDecodeError
 from django.shortcuts import get_object_or_404
+from rest_framework.filters import SearchFilter, OrderingFilter
+
 
 class CustomRedirect(HttpResponsePermanentRedirect):
 
@@ -31,22 +34,25 @@ class CustomRedirect(HttpResponsePermanentRedirect):
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     queryset = CustomUser.objects.all()
+
     def create(self, request):
-        serializer=UserSerializer(data=request.data,context={"request": request})
-        serializer.is_valid()
-        serializer.save()
-        user_data = serializer.data
-        user = CustomUser.objects.get(email=user_data['email'])
-        token = RefreshToken.for_user(user).access_token
+        try:
+            serializer=UserSerializer(data=request.data,context={"request": request})
+            serializer.is_valid()
+            serializer.save()
+            user_data = serializer.data
+            user = CustomUser.objects.get(email=user_data['email'])
+            token = RefreshToken.for_user(user).access_token
 
-        current_site = get_current_site(request)
-        relativeLink = reverse('email-verify')
-        absurl = 'http://'+str(current_site)+relativeLink+'?token='+str(token)
-        email_body='Hello '+user.first_name+' Use below link to verify your email \n' + absurl
-        data = {'email_body': email_body, 'to_email': user.email, 'email_subject': 'Verify your Email!'}
-        Util.send_email(data)
-        return Response(user_data, status= status.HTTP_201_CREATED)
-
+            current_site = get_current_site(request)
+            relativeLink = reverse('email-verify')
+            absurl = 'http://'+str(current_site)+relativeLink+'?token='+str(token)
+            email_body='Hello '+user.first_name+' Use below link to verify your email \n' + absurl
+            data = {'email_body': email_body, 'to_email': user.email, 'email_subject': 'Verify your Email!'}
+            Util.send_email(data)
+            return Response(user_data, status= status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status = HTTP_500_INTERNAL_SERVER_ERROR)
 
 
     def get_serializer_class(self):
@@ -62,17 +68,29 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         # Your logic should be all here
-        if self.action == 'list':
-            permission_classes = [IsAuthenticatedOrReadOnly]
-        if self.action == 'create':
-            permission_classes = [AllowAny]
-        if self.action == 'update':
-            permission_classes = [IsAuthenticated]
-        else:
-            permission_classes = [AllowAny]
-        return [permission() for permission in permission_classes]
+        if self.request.method == 'GET':
+            self.permission_classes = (AllowAny,)
+        if self.request.method == 'PATCH':
+            self.permission_classes = (IsAuthenticated, IsOwnerOrReadOnly)
+        if self.request.method == 'PUT':
+            self.permission_classes = (IsOwnerOrReadOnly,)
+        if self.request.method == 'DELETE':
+            self.permission_classes = (IsAdminUser,)
+        if self.request.method == 'POST':
+            self.permission_classes = (AllowAny, )
+        return super(UserViewSet, self).get_permissions()
 
-
+    def update(self, request, pk=None):
+        try:
+            user = self.get_object()
+            serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'message': 'Account Update Successful'})
+            else:
+                return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=HTTP_500_INTERNAL_SERVER_ERROR)
 
 class VerifyEmail(views.APIView):
     serializer_class = EmailVerificationSerializer
@@ -97,48 +115,33 @@ class VerifyEmail(views.APIView):
 class PatientViewset(viewsets.ModelViewSet):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
-    permission_classes = [IsOwnerOrReadOnly, IsAuthenticatedOrReadOnly,]
 
     def get_permissions(self):
-        # Your logic should be all here
         if self.request.method == 'GET':
             self.permission_classes = (AllowAny,)
-        if self.request.method == 'PATCH':
-            self.permission_classes = (IsAuthenticated, IsOwnerOrReadOnly)
-        if self.request.method == 'PUT':
-            self.permission_classes = (IsOwnerOrReadOnly,)
         if self.request.method == 'DELETE':
             self.permission_classes = (IsAdminUser,)
-        if self.request.method == 'POST':
-            self.permission_classes = (IsAuthenticated, IsOwnerOrReadOnly,)
         return super(PatientViewset, self).get_permissions()
 
 
 class DoctorViewset(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
-    permission_classes = [IsOwnerOrReadOnly, IsAuthenticatedOrReadOnly, ]
 
     def get_permissions(self):
-        # Your logic should be all here
         if self.request.method == 'GET':
             self.permission_classes = (AllowAny,)
-        if self.request.method == 'PATCH':
-            self.permission_classes = (IsAuthenticated, IsOwnerOrReadOnly)
-        if self.request.method == 'PUT':
-            self.permission_classes = (IsOwnerOrReadOnly,)
         if self.request.method == 'DELETE':
             self.permission_classes = (IsAdminUser,)
-        if self.request.method == 'POST':
-            self.permission_classes = (IsAuthenticated, IsOwnerOrReadOnly,)
         return super(DoctorViewset, self).get_permissions()
+
+
 
 
 class EmailTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 class ChangePasswordView(generics.UpdateAPIView):
-
     queryset = CustomUser.objects.all()
     permission_classes = (IsAuthenticated,)
     serializer_class = ChangePasswordSerializer

@@ -76,7 +76,20 @@ class CustomUser(AbstractBaseUser):
         max_length=255,
         verbose_name="Last Name",
     )
-    user_type_data = (('P', "Patient"), ('D', "Doctor"))
+    phone_number = models.IntegerField(
+        null=True,
+        verbose_name="Phone Number",
+    )
+    dob = models.DateField(
+        verbose_name="Date of Birth",
+        null=True
+    )
+    address = models.TextField(
+        max_length=255,
+        verbose_name="Address", )
+    gender_type_data = (('M', "Male"), ('F', "Female"), ('U', "Unspecified"))
+    gender_type = models.CharField(default='F', choices=gender_type_data, max_length=10)
+    user_type_data = (('A', 'Admin'), ('P', "Patient"), ('D', "Doctor"))
     user_type = models.CharField(default='P', choices=user_type_data, max_length=10)
     is_verified = models.BooleanField(default=False)
     is_patient = models.BooleanField(default=True)
@@ -121,21 +134,12 @@ class Patient(models.Model):
         primary_key=True,
         related_name='patient'
     )
-    address = models.TextField(
-        max_length=255,
-        verbose_name="Address", )
-    profile_pic = models.ImageField(
+    blood_group = (('Choose', 'Choose your blood group'),('A+', "A+"), ('O+', "B+"), ('AB+', "AB+"), ('A-', "A-"),
+                   ('O-', "O-"), ('B-', "B-"), ('AB-', "AB-"))
+    blood_type = models.CharField(default='Choose', choices=blood_group, max_length=10)
+    profile_pic = models.ImageField(upload_to='patientprofile/',
         verbose_name="Profile Picture",
     )
-    phone_number = models.IntegerField(
-        null=True,
-        verbose_name="Phone Number",
-    )
-    dob = models.DateField(
-        verbose_name="Date of Birth",
-    )
-    gender_type_data = (('M', "Male"), ('F', "Female"), ('U', "Unspecified"))
-    gender_type = models.CharField(default='F', choices=gender_type_data, max_length=10)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
@@ -148,21 +152,9 @@ class Doctor(models.Model):
         primary_key=True,
         related_name='doctor'
     )
-    address = models.TextField(
-        max_length=255,
-        verbose_name="Address", )
-    profile_pic = models.ImageField(
-        verbose_name="Profile Picture",
+    profile_pic = models.ImageField(upload_to='doctorprofile/',
+        verbose_name="Doctor Profile Picture",
     )
-    phone_number = models.IntegerField(
-        null=True,
-        verbose_name="Phone Number",
-    )
-    dob = models.DateField(
-        verbose_name="Date of Birth",
-    )
-    gender_type_data = (('M', "Male"), ('F', "Female"), ('U', "Unspecified"))
-    gender_type = models.CharField(default='F', choices=gender_type_data, max_length=10)
     approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
@@ -172,6 +164,7 @@ class Doctor(models.Model):
         return f'{self.user}'
 
 
+
 @receiver(post_save, sender=CustomUser)
 # Now Creating a Function which will automatically insert data in HOD, Staff or Student
 def create_user_profile(sender, instance, created, **kwargs):
@@ -179,9 +172,9 @@ def create_user_profile(sender, instance, created, **kwargs):
     if created:
         # Check the user_type and insert the data in respective tables
         if instance.user_type == 'P':
-            Patient.objects.create(user=instance, address="", profile_pic="", phone_number=0, dob='1990-12-1', gender_type="M")
+            Patient.objects.create(user=instance, profile_pic="patientprofile/userdefault.png", blood_type="Choose")
         if instance.user_type == 'D':
-            Doctor.objects.create(user=instance,address="", profile_pic="", phone_number=0, dob='1999-12-10', gender_type="M",approved=False,
+            Doctor.objects.create(user=instance, profile_pic="doctorprofile/defaultdoctor.png", approved=False,
                                   specialization="", about="")
 
 

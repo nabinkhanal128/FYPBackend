@@ -1,4 +1,5 @@
 from django.contrib.auth.password_validation import validate_password
+from django.core.validators import EmailValidator
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import serializers, status, validators
 from rest_framework.exceptions import AuthenticationFailed
@@ -11,10 +12,12 @@ from django.utils.encoding import smart_str, force_str, smart_bytes, DjangoUnico
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ('id', 'first_name', 'last_name', 'email', 'user_type', 'password')
+        fields = ('id', 'first_name', 'last_name', 'email', 'phone_number', 'dob', 'address','gender_type',
+                  'user_type', 'password')
         extra_kwargs = {'password': {'write_only': True},
                         'id': {'read_only': True},
-                        'email': {'required': True}, }
+                        'email': {'required': True, 'validators': [EmailValidator, ]},
+                        }
 
     def create(self, validated_data):
         """ Creates and returns a new user """
@@ -24,22 +27,49 @@ class UserSerializer(serializers.ModelSerializer):
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
             email=validated_data['email'],
+            phone_number=validated_data['phone_number'],
+            dob = validated_data['dob'],
+            address = validated_data['address'],
+            gender_type = validated_data['gender_type'],
+            user_type = validated_data['user_type']
         )
 
         user.set_password(validated_data['password'])
         user.save()
         return user
 
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = fields = ('first_name', 'last_name', 'phone_number', 'dob', 'address','gender_type')
 
 class PatientSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    first_name = serializers.ReadOnlyField(source="user.first_name")
+    last_name = serializers.ReadOnlyField(source="user.last_name")
+    email = serializers.ReadOnlyField(source="user.email")
+    phone_number = serializers.ReadOnlyField(source="user.phone_number")
+    dob = serializers.ReadOnlyField(source="user.dob")
+    address = serializers.ReadOnlyField(source="user.address")
+    gender_type = serializers.ReadOnlyField(source="user.gender_type")
     class Meta:
         model = Patient
-        fields = '__all__'
+        fields = ('user', 'first_name', 'last_name', 'email', 'phone_number', 'dob', 'address',
+                  'gender_type', 'blood_type', 'profile_pic')
 
 class DoctorSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    first_name = serializers.ReadOnlyField(source="user.first_name")
+    last_name = serializers.ReadOnlyField(source="user.last_name")
+    email = serializers.ReadOnlyField(source="user.email")
+    phone_number = serializers.ReadOnlyField(source="user.phone_number")
+    dob = serializers.ReadOnlyField(source="user.dob")
+    address = serializers.ReadOnlyField(source="user.address")
+    gender_type = serializers.ReadOnlyField(source="user.gender_type")
     class Meta:
         model = Doctor
-        fields = '__all__'
+        fields = ('user', 'first_name', 'last_name', 'email', 'phone_number', 'dob', 'address', 'gender_type',
+                  'specialization', 'about','profile_pic')
 
 class EmailTokenObtainSerializer(TokenObtainSerializer):
     username_field = CustomUser.USERNAME_FIELD
@@ -97,7 +127,7 @@ class ChangePasswordSerializer(serializers.ModelSerializer):
         if user.pk != instance.pk:
             raise serializers.ValidationError({"authorize": "You don't have permission for this user."})
 
-        instance.set_password(validated_data['password'])
+        instance.set_password(validated_data['password']) 
         instance.save()
 
         return instance
