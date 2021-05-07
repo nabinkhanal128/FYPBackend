@@ -25,8 +25,7 @@ SECRET_KEY = 'a0me+se_o))^(b#(yskitrcz0tja8ipm)pmdty-ltb6ub!oc*^'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['10.0.2.2', '192.168.1.11', '100.64.195.34', '100.64.253.27', '192.168.0.108', '192.168.1.95',
-                 'localhost']
+ALLOWED_HOSTS = ['myclinicbackend.herokuapp.com', '127.0.0.1']
 
 # Application definition
 
